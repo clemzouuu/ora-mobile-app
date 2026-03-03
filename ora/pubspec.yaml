@@ -63,7 +63,7 @@ flutter:
   fonts:
     - family: Coroy
       fonts:
-        - asset: assets/fonts/Coroy.ttf
+        - asset: assets/fonts/Coroy.otf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

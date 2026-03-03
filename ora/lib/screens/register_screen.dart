@@ -1,54 +1,49 @@
 import 'package:flutter/material.dart';
 import '../services/auth_services.dart';
 import 'home_screen.dart';
-import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
 
   String? _error;
+  String? _success;
 
-  Future<void> _login() async {
-    final success = await _authService.login(
-      _usernameController.text.trim(),
-      _passwordController.text.trim(),
-    );
-
-    if (success) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+  Future<void> _register() async {
+      final created = await _authService.register(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
       );
-    } else {
-      setState(() {
-        _error = "Identifiants incorrects";
-      });
+
+      if (created) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      } else {
+        setState(() {
+          _error = "Un compte existe déjà.";
+        });
+      }
     }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text("Inscription")),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              "Ora",
-              style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 40),
-
             TextField(
               controller: _usernameController,
               decoration: const InputDecoration(
@@ -72,24 +67,19 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(_error!, style: const TextStyle(color: Colors.red)),
             ],
 
+            if (_success != null) ...[
+              const SizedBox(height: 20),
+              Text(_success!, style: const TextStyle(color: Colors.green)),
+            ],
+
             const SizedBox(height: 20),
 
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _login,
-                child: const Text("Connexion"),
+                onPressed: _register,
+                child: const Text("Créer le compte"),
               ),
-            ),
-
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                );
-              },
-              child: const Text("Créer un compte"),
             ),
           ],
         ),

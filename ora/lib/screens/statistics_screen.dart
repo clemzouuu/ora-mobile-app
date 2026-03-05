@@ -22,10 +22,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Map<String, dynamic>? data;
   bool loading = true;
+
+  // Valeurs en temps réel (MQTT)
   String liveTemperature = "-";
   String liveHeartRate = "-";
-  String liveMovement = "-"; // Initialisé pour le MQTT
+  String liveMovement = "-";
+  String liveBust = "-";
 
+  // Système de batching pour l'envoi en BDD
   Timer? _batchTimer;
   final List<double> _tempBuffer = [];
   final List<double> _heartBuffer = [];
@@ -33,11 +37,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   void initState() {
     super.initState();
-    loadData();
-    initMqtt();
+    loadData(); // Charge les données de la BDD (PostgreSQL)
+    initMqtt(); // Active l'écoute des capteurs en direct
     startBatchSystem();
   }
 
+  // Récupération des statistiques persistantes (ex: Tour de poitrine)
   Future<void> loadData() async {
     final result = await service.fetchStatistics();
     setState(() {
@@ -46,46 +51,35 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     });
   }
 
+  // Connexion et écoute des flux MQTT
   Future<void> initMqtt() async {
     await liveService.connectMqtt();
 
     liveService.temperatureStream.listen((temp) {
-      if (mounted) {
-        setState(() {
-          liveTemperature = temp;
-        });
-      }
+      if (mounted) setState(() => liveTemperature = temp);
     });
 
     liveService.heartStream.listen((heart) {
-      if (mounted) {
-        setState(() {
-          liveHeartRate = heart;
-        });
-      }
+      if (mounted) setState(() => liveHeartRate = heart);
     });
 
-    // Écoute du flux de mouvements brusques
     liveService.movementStream.listen((movement) {
-      if (mounted) {
-        setState(() {
-          liveMovement = movement;
-        });
-      }
+      if (mounted) setState(() => liveMovement = movement);
+    });
+
+    liveService.bustStream.listen((bust) {
+      if (mounted) setState(() => liveBust = bust);
     });
   }
 
   void startBatchSystem() {
+    // Accumulation des données toutes les minutes, envoi toutes les 5 min
     _batchTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       double? currentT = double.tryParse(liveTemperature);
       double? currentH = double.tryParse(liveHeartRate);
 
       if (currentT != null) _tempBuffer.add(currentT);
       if (currentH != null) _heartBuffer.add(currentH);
-
-      debugPrint(
-        "Batching: Temp count ${_tempBuffer.length}, BPM count ${_heartBuffer.length}",
-      );
 
       if (_tempBuffer.length >= 5) {
         _sendBatch('temperature', List.from(_tempBuffer));
@@ -126,21 +120,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     super.dispose();
   }
 
+  // Affiche la valeur provenant de la BDD (Utilisé pour le Tour de poitrine)
   Widget buildCard(String title, String keyName, String unit) {
     final rawValue = data?[keyName];
-    String displayValue;
-    String displayUnit = unit;
+    String displayValue =
+        (rawValue == null || rawValue.toString().trim().isEmpty)
+        ? "à définir"
+        : rawValue.toString();
 
-    if (rawValue == null || rawValue.toString().trim().isEmpty) {
-      displayValue = "à définir";
-      displayUnit = "";
-    } else {
-      displayValue = rawValue.toString();
-    }
-
-    return _buildListTile(title, displayValue, displayUnit, keyName: keyName);
+    return _buildListTile(title, displayValue, unit, keyName: keyName);
   }
 
+  // Affiche la valeur provenant du MQTT (Utilisé pour Temp, BPM, Accel)
   Widget buildLiveCard(String title, String value, String unit) {
     return _buildListTile(title, value, unit, isLive: true);
   }
@@ -173,11 +164,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
         ),
         onTap: () {
-          if (keyName == "tour_poitrine") {
+          if (title == "Tour de poitrine") {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ChestInputScreen()),
-            ).then((_) => loadData());
+              MaterialPageRoute(
+                builder: (_) => ChestInputScreen(
+                  currentBust: liveBust,
+                ), // On envoie l'ajustement MQTT au détail
+              ),
+            ).then((_) => loadData()); // Rafraîchit la BDD au retour
           } else if (title == "Température") {
             Navigator.push(
               context,
@@ -229,8 +224,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 children: [
                   buildLiveCard("Température", liveTemperature, "°C"),
                   buildLiveCard("Rythme cardiaque", liveHeartRate, "bpm"),
-                  // Changement : On utilise buildLiveCard avec liveMovement
                   buildLiveCard("Mouvements brusques", liveMovement, "m/s"),
+
+                  // AFFICHAGE BDD : Pour voir la valeur fixe enregistrée
                   buildCard("Tour de poitrine", "tour_poitrine", "cm"),
                 ],
               ),

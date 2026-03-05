@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
+import 'screens/welcome_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -13,13 +13,44 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Ora App',
-
       theme: ThemeData(
-        fontFamily: 'Coroy',  
-        primarySwatch: Colors.blue,
-      ),
+        scaffoldBackgroundColor: Color(0xFFCED8E1),
 
-      home: const LoginScreen(),
+        // Style de texte global
+        textTheme: TextTheme(
+          
+          bodyLarge: TextStyle(color: Color(0xFF9D7B1A)),
+          bodyMedium: TextStyle(color: Color(0xFF9D7B1A)),
+          bodySmall: TextStyle(color: Color(0xFF9D7B1A)),
+          headlineLarge: TextStyle(color: Color(0xFF9D7B1A)),
+          headlineMedium: TextStyle(color: Color(0xFF9D7B1A)),
+          headlineSmall: TextStyle(color: Color(0xFF9D7B1A)),
+        ),
+
+        // Style global des TextButtons
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: Color(0xFF9D7B1A), // couleur du texte du bouton
+          ),
+        ),
+
+        // Style global des ElevatedButtons
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            foregroundColor: Color(0xFF9D7B1A), // texte
+            backgroundColor: Colors.white,       // optionnel : couleur du bouton
+          ),
+        ),
+
+        // Style global des OutlinedButtons
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Color(0xFF9D7B1A), // texte
+            side: BorderSide(color: Color(0xFF9D7B1A)), // contour
+          ),
+        ),
+      ),
+      home: WelcomePage(),
     );
   }
 }

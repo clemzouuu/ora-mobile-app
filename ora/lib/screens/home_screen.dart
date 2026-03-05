@@ -251,7 +251,13 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         ElevatedButton(
           onPressed: () => setState(() => value--),
-          child: const Text("-"),
+          child: const Text(
+            "-",
+            style: const TextStyle(
+              fontSize: 24, // valeur aussi plus grande
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -262,7 +268,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         ElevatedButton(
           onPressed: () => setState(() => value++),
-          child: const Text("+"),
+          child: const Text(
+            "+",
+            style: const TextStyle(
+              fontSize: 24, // valeur aussi plus grande
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
     );

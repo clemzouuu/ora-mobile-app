@@ -42,4 +42,16 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_loggedInKey) ?? false;
   }
+
+
+  Future<bool> updatePassword(String oldPassword, String newPassword) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPassword = prefs.getString(_passwordKey);
+
+    if (savedPassword == oldPassword) {
+      await prefs.setString(_passwordKey, newPassword);
+      return true;
+    }
+    return false;
+  }
 }

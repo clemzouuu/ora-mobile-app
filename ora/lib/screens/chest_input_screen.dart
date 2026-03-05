@@ -29,7 +29,7 @@ class _ChestInputScreenState extends State<ChestInputScreen> {
 
       final nouvelleTaille = _controller.text.trim();
       final url = Uri.parse(
-        'https://helpother.fr/sizeBust/abcd/get',
+        'http://localhost:3000/api/sizeBust/manual',
       ); // URL HTTP
 
       try {
@@ -37,7 +37,7 @@ class _ChestInputScreenState extends State<ChestInputScreen> {
         final response = await http.post(
           url,
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({"sizeBust": nouvelleTaille}),
+          body: jsonEncode({"value": nouvelleTaille}),
         );
 
         if (response.statusCode == 200 || response.statusCode == 201) {

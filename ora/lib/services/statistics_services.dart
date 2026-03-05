@@ -4,15 +4,14 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 class StatisticsService {
   Future<Map<String, dynamic>> fetchStatistics() async {
     final prefs = await SharedPreferences.getInstance();
     // Récupération de la valeur stockée localement par ChestInputScreen
     final tourPoitrine = prefs.getString('tour_poitrine');
-
     await Future.delayed(const Duration(milliseconds: 500));
-    return {
-      "mouvements_brusques": 12,
+    return { 
       "tour_poitrine": tourPoitrine, // Retourne la valeur réelle ou null
     };
   }
@@ -24,10 +23,12 @@ class LiveHealthService {
   // Controllers pour diffuser les données en temps réel
   final _tempController = StreamController<String>.broadcast();
   final _heartController = StreamController<String>.broadcast();
+  final _movementController = StreamController<String>.broadcast();
 
   // Flux (Streams) écoutés par l'interface utilisateur
   Stream<String> get temperatureStream => _tempController.stream;
   Stream<String> get heartStream => _heartController.stream;
+  Stream<String> get movementStream => _movementController.stream;
 
   Future<void> connectMqtt() async {
     client = MqttServerClient(
@@ -60,6 +61,7 @@ class LiveHealthService {
       // Souscription aux deux topics identifiés sur le broker
       client!.subscribe('temperature/abcd', MqttQos.atMostOnce);
       client!.subscribe('cardiac/abcd', MqttQos.atMostOnce);
+      client!.subscribe('accel/abcd', MqttQos.atMostOnce);
 
       client!.updates!.listen((List<MqttReceivedMessage<MqttMessage?>>? c) {
         final recMess = c![0].payload as MqttPublishMessage;
@@ -76,6 +78,13 @@ class LiveHealthService {
             _tempController.add(data['temp'].toString());
           } else if (topic == 'cardiac/abcd' && data.containsKey('cardiac')) {
             _heartController.add(data['cardiac'].toString());
+          }
+          else if (topic == 'accel/abcd') {
+             if (data.containsKey('accel')) {
+              _movementController.add(data['accel'].toString());
+            } else {
+               _movementController.add(payload);
+            }
           }
         } catch (e) {
           print("Erreur de décodage JSON: $e");
@@ -96,6 +105,7 @@ class LiveHealthService {
   void disconnect() {
     client?.disconnect();
     _tempController.close();
-    _heartController.close(); // Fermeture des deux flux
+    _heartController.close(); 
+    _movementController.close();
   }
 }

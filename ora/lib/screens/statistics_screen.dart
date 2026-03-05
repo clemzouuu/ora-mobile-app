@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/statistics_services.dart';
-import 'statistic_detail_screen.dart';
 import 'home_screen.dart';
 import 'chest_input_screen.dart';
+import 'temperature_screen.dart';
+import 'heart_rate_screen.dart';
+import 'movement_screen.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -18,13 +23,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Map<String, dynamic>? data;
   bool loading = true;
   String liveTemperature = "-";
-  String liveHeartRate = "-"; // Nouvelle variable pour le flux en direct
+  String liveHeartRate = "-";
+  String liveMovement = "-"; // Initialisé pour le MQTT
+
+  Timer? _batchTimer;
+  final List<double> _tempBuffer = [];
+  final List<double> _heartBuffer = [];
 
   @override
   void initState() {
     super.initState();
     loadData();
     initMqtt();
+    startBatchSystem();
   }
 
   Future<void> loadData() async {
@@ -38,7 +49,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Future<void> initMqtt() async {
     await liveService.connectMqtt();
 
-    // Écoute de la température
     liveService.temperatureStream.listen((temp) {
       if (mounted) {
         setState(() {
@@ -47,7 +57,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       }
     });
 
-    // Écoute du rythme cardiaque en temps réel
     liveService.heartStream.listen((heart) {
       if (mounted) {
         setState(() {
@@ -55,18 +64,70 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         });
       }
     });
+
+    // Écoute du flux de mouvements brusques
+    liveService.movementStream.listen((movement) {
+      if (mounted) {
+        setState(() {
+          liveMovement = movement;
+        });
+      }
+    });
+  }
+
+  void startBatchSystem() {
+    _batchTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      double? currentT = double.tryParse(liveTemperature);
+      double? currentH = double.tryParse(liveHeartRate);
+
+      if (currentT != null) _tempBuffer.add(currentT);
+      if (currentH != null) _heartBuffer.add(currentH);
+
+      debugPrint(
+        "Batching: Temp count ${_tempBuffer.length}, BPM count ${_heartBuffer.length}",
+      );
+
+      if (_tempBuffer.length >= 5) {
+        _sendBatch('temperature', List.from(_tempBuffer));
+        _tempBuffer.clear();
+      }
+
+      if (_heartBuffer.length >= 5) {
+        _sendBatch('cardiac', List.from(_heartBuffer));
+        _heartBuffer.clear();
+      }
+    });
+  }
+
+  Future<void> _sendBatch(String type, List<double> values) async {
+    try {
+      final List<Map<String, dynamic>> payload = values
+          .map((v) => {"type": type, "value": v.toStringAsFixed(2)})
+          .toList();
+
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/batch'),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({"measurements": payload}),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint("Batch $type envoyé avec succès");
+      }
+    } catch (e) {
+      debugPrint("Erreur lors de l'envoi du batch $type : $e");
+    }
   }
 
   @override
   void dispose() {
+    _batchTimer?.cancel();
     liveService.disconnect();
     super.dispose();
   }
 
-  // Builder pour les données statiques ou persistantes (ex: Tour de poitrine)
   Widget buildCard(String title, String keyName, String unit) {
     final rawValue = data?[keyName];
-
     String displayValue;
     String displayUnit = unit;
 
@@ -80,7 +141,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return _buildListTile(title, displayValue, displayUnit, keyName: keyName);
   }
 
-  // Builder pour les données MQTT en direct
   Widget buildLiveCard(String title, String value, String unit) {
     return _buildListTile(title, value, unit, isLive: true);
   }
@@ -118,15 +178,25 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               context,
               MaterialPageRoute(builder: (_) => const ChestInputScreen()),
             ).then((_) => loadData());
-          } else {
+          } else if (title == "Température") {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => StatisticDetailScreen(
-                  title: title,
-                  value: value,
-                  unit: unit,
-                ),
+                builder: (_) => TemperatureScreen(currentTemp: value),
+              ),
+            );
+          } else if (title == "Rythme cardiaque") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => HeartRateScreen(currentHeartRate: value),
+              ),
+            );
+          } else if (title == "Mouvements brusques") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MovementScreen(movementValue: value),
               ),
             );
           }
@@ -157,16 +227,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Données en direct (MQTT)
                   buildLiveCard("Température", liveTemperature, "°C"),
                   buildLiveCard("Rythme cardiaque", liveHeartRate, "bpm"),
-
-                  // Données statiques / locales
-                  buildCard(
-                    "Mouvements brusques",
-                    "mouvements_brusques",
-                    "m/s",
-                  ),
+                  // Changement : On utilise buildLiveCard avec liveMovement
+                  buildLiveCard("Mouvements brusques", liveMovement, "m/s"),
                   buildCard("Tour de poitrine", "tour_poitrine", "cm"),
                 ],
               ),

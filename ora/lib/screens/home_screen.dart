@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../services/auth_services.dart';
+import '../services/statistics_services.dart';
 import 'login_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
@@ -14,8 +15,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final authService = AuthService();
+  final liveService = LiveHealthService();
+  final String idOfEmbedded = "abcd"; // ID utilisé pour les topics MQTT
 
-  // --- Logique de l'Avatar ---
   int avatarIndex = 0;
   final List<String> avatars = [
     'assets/avatar/avatar.glb',
@@ -24,26 +26,66 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   final List<String> modes = ["Mode normal", "Mode sport", "Mode nuit"];
+  bool isEditing = false;
+  int value = 0;
 
-  bool isEditing = false; // État édition
-  int value = 0; // Valeur à modifier
-
-  void nextAvatar() {
-    setState(() {
-      avatarIndex = (avatarIndex + 1) % avatars.length;
-    });
-  }
-
-  void previousAvatar() {
-    setState(() {
-      avatarIndex = (avatarIndex - 1 + avatars.length) % avatars.length;
-    });
+  @override
+  void initState() {
+    super.initState();
+    liveService.connectMqtt(); // Connexion au broker helpother.fr
   }
 
   void _navigate(BuildContext context, Widget page) {
-    // On utilise push pour pouvoir revenir ou pushReplacement selon ton besoin
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
+
+  // --- Logique MQTT : Activation des Modes ---
+  void _handleActivation() {
+    String topic = "";
+    switch (avatarIndex) {
+      case 0: // Mode Normal
+        topic = "servo/normal/$idOfEmbedded";
+        break;
+      case 1: // Mode Sport (Pushup)
+        topic = "servo/pushup/$idOfEmbedded";
+        break;
+      case 2: // Mode Nuit
+        topic = "servo/night/$idOfEmbedded";
+        break;
+    }
+
+    if (topic.isNotEmpty) {
+      liveService.publishMessage(topic, "1"); // On publie la commande
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Activation : ${modes[avatarIndex]}")),
+      );
+    }
+  }
+
+  // --- Logique MQTT : Validation du Serrage (+/-) ---
+  void _handleValidation() {
+    String topic = "";
+    if (value > 0) {
+      topic = "servo/tighten/$idOfEmbedded";
+    } else if (value < 0) {
+      topic = "servo/loosen/$idOfEmbedded";
+    }
+
+    if (topic.isNotEmpty) {
+      liveService.publishMessage(topic, value.abs().toString());
+    }
+
+    setState(() {
+      isEditing = false;
+      value = 0;
+    });
+  }
+
+  void nextAvatar() =>
+      setState(() => avatarIndex = (avatarIndex + 1) % avatars.length);
+  void previousAvatar() => setState(
+    () => avatarIndex = (avatarIndex - 1 + avatars.length) % avatars.length,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("Ora"),
         centerTitle: true,
-        // Burger menu à droite
         actions: [
           Builder(
             builder: (context) => IconButton(
@@ -62,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // Drawer conservé de home_screen
       endDrawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -73,23 +113,42 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.home),
               title: const Text("Accueil"),
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
+              leading: const Icon(Icons.bar_chart),
               title: const Text("Statistiques"),
-              onTap: () => _navigate(context, const StatisticsScreen()),
+              onTap: () {
+                Navigator.pop(context);
+                _navigate(context, const StatisticsScreen());
+              },
             ),
             ListTile(
+              leading: const Icon(Icons.settings),
               title: const Text("Paramètres"),
-              onTap: () => _navigate(context, const SettingsScreen()),
+              onTap: () {
+                Navigator.pop(context);
+                _navigate(context, const SettingsScreen());
+              },
             ),
             const Divider(),
             ListTile(
-              title: const Text("Déconnexion"),
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text(
+                "Déconnexion",
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () async {
                 await authService.logout();
-                if (mounted) _navigate(context, const LoginScreen());
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
               },
             ),
           ],
@@ -98,7 +157,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       body: Column(
         children: [
-          /// Titre et contrôles d'édition (Importé de AvatarPage)
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -120,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 10),
                 if (isEditing)
                   ElevatedButton(
-                    onPressed: () => setState(() => isEditing = false),
+                    onPressed: _handleValidation,
                     child: const Text("Valider"),
                   ),
                 if (!isEditing)
@@ -131,99 +189,36 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-
-          /// Visionneuse 3D (Importé de AvatarPage)
           Expanded(
             child: Stack(
               alignment: Alignment.center,
               children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  transitionBuilder: (child, animation) =>
-                      FadeTransition(opacity: animation, child: child),
-                  child: ModelViewer(
-                    key: ValueKey(avatars[avatarIndex]),
-                    src: avatars[avatarIndex],
-                    autoRotate: true,
-                    cameraControls: true,
-                    backgroundColor: Colors.white,
-                  ),
+                ModelViewer(
+                  key: ValueKey(avatars[avatarIndex]),
+                  src: avatars[avatarIndex],
+                  autoRotate: true,
+                  cameraControls: true,
+                  backgroundColor: Colors.white,
                 ),
-                // Flèche gauche
                 Positioned(
                   left: 20,
-                  child: GestureDetector(
-                    onTap: previousAvatar,
-                    child: Opacity(
-                      opacity: 0.25,
-                      child: CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.black,
-                        child: const Icon(
-                          Icons.arrow_left,
-                          color: Colors.white,
-                          size: 36,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: _arrowButton(Icons.arrow_left, previousAvatar),
                 ),
-                // Flèche droite
                 Positioned(
                   right: 20,
-                  child: GestureDetector(
-                    onTap: nextAvatar,
-                    child: Opacity(
-                      opacity: 0.25,
-                      child: CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.black,
-                        child: const Icon(
-                          Icons.arrow_right,
-                          color: Colors.white,
-                          size: 36,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: _arrowButton(Icons.arrow_right, nextAvatar),
                 ),
               ],
             ),
           ),
-
-          /// Actions du bas (Importé de AvatarPage)
           Padding(
             padding: const EdgeInsets.all(20),
             child: isEditing
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => setState(() => value--),
-                        child: const Text("-"),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          "$value",
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => setState(() => value++),
-                        child: const Text("+"),
-                      ),
-                    ],
-                  )
+                ? _buildEditingControls()
                 : SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Action pour Activer
-                      },
+                      onPressed: _handleActivation,
                       child: const Text(
                         "Activer",
                         style: TextStyle(fontSize: 18),
@@ -233,6 +228,43 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _arrowButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: 0.25,
+        child: CircleAvatar(
+          radius: 30,
+          backgroundColor: Colors.black,
+          child: Icon(icon, color: Colors.white, size: 36),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditingControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: () => setState(() => value--),
+          child: const Text("-"),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            "$value",
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () => setState(() => value++),
+          child: const Text("+"),
+        ),
+      ],
     );
   }
 }

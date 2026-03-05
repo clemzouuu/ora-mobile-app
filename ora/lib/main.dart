@@ -14,8 +14,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Ora App',
       theme: ThemeData(
+        fontFamily: 'Coroy',
         scaffoldBackgroundColor: Color(0xFFCED8E1),
-
+        listTileTheme: const ListTileThemeData(
+          iconColor: Color(0xFF9D7B1A),
+          textColor: Color(0xFF9D7B1A),
+        ),
         // Style de texte global
         textTheme: TextTheme(
           
@@ -25,6 +29,12 @@ class MyApp extends StatelessWidget {
           headlineLarge: TextStyle(color: Color(0xFF9D7B1A)),
           headlineMedium: TextStyle(color: Color(0xFF9D7B1A)),
           headlineSmall: TextStyle(color: Color(0xFF9D7B1A)),
+          labelLarge: TextStyle(color: Color(0xFF9D7B1A)),
+          labelMedium: TextStyle(color: Color(0xFF9D7B1A)),
+          labelSmall: TextStyle(color: Color(0xFF9D7B1A)),
+          titleLarge: TextStyle(color: Color(0xFF9D7B1A)),
+          titleMedium: TextStyle(color: Color(0xFF9D7B1A)),
+          titleSmall: TextStyle(color: Color(0xFF9D7B1A)),
         ),
 
         // Style global des TextButtons
@@ -38,7 +48,7 @@ class MyApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             foregroundColor: Color(0xFF9D7B1A), // texte
-            backgroundColor: Colors.white,       // optionnel : couleur du bouton
+            backgroundColor: Colors.white, // optionnel : couleur du bouton
           ),
         ),
 

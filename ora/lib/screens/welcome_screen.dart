@@ -12,7 +12,7 @@ class WelcomePage extends StatelessWidget {
         children: [
           SizedBox.expand(
             child: Image.asset(
-              'assets/images/marble_texture_welcome_screen.jpg',
+              'assets/images/fond_welcome_screen.jpg',
               fit: BoxFit.cover,
             ),
           ),

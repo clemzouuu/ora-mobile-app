@@ -16,14 +16,10 @@ class _AvatarPageState extends State<AvatarPage> {
     'assets/avatar/avatar.glb',
   ];
 
-  final List<String> modes = [
-    "Mode normal",
-    "Mode sport",
-    "Mode nuit",
-  ];
+  final List<String> modes = ["Mode normal", "Mode sport", "Mode nuit"];
 
   bool isEditing = false; // État édition
-  int value = 0;          // Valeur à modifier avec + et -
+  int value = 0; // Valeur à modifier avec + et -
 
   void nextAvatar() {
     setState(() {
@@ -43,7 +39,6 @@ class _AvatarPageState extends State<AvatarPage> {
       appBar: AppBar(title: const Text("Mon Avatar 3D")),
       body: Column(
         children: [
-
           /// Titre entouré des boutons Valider / Annuler
           Padding(
             padding: const EdgeInsets.all(16),
@@ -99,14 +94,10 @@ class _AvatarPageState extends State<AvatarPage> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 500),
                   transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
+                    return FadeTransition(opacity: animation, child: child);
                   },
                   child: ModelViewer(
                     key: ValueKey(avatars[avatarIndex]),
@@ -161,50 +152,82 @@ class _AvatarPageState extends State<AvatarPage> {
           ),
 
           /// Boutons + et - ou Activer selon l’état
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: isEditing
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            value--;
-                          });
-                        },
-                        child: const Text("-"),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          "$value",
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Bouton "-"
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    value--;
+                  });
+                },
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 100,
+                    minHeight: 100,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "-",
+                        style: TextStyle(
+                          fontSize: 72, // beaucoup plus grand
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            value++;
-                          });
-                        },
-                        child: const Text("+"),
-                      ),
-                    ],
-                  )
-                : SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      child: const Text(
-                        "Activer",
-                        style: TextStyle(fontSize: 18),
                       ),
                     ),
                   ),
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  "$value",
+                  style: const TextStyle(
+                    fontSize: 56, // valeur aussi plus grande
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              // Bouton "+"
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    value++;
+                  });
+                },
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 100,
+                    minHeight: 100,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "+",
+                        style: TextStyle(
+                          fontSize: 72,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

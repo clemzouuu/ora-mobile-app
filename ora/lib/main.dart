@@ -18,7 +18,6 @@ class MyApp extends StatelessWidget {
 
         // Style de texte global
         textTheme: TextTheme(
-          
           bodyLarge: TextStyle(color: Color(0xFF9D7B1A)),
           bodyMedium: TextStyle(color: Color(0xFF9D7B1A)),
           bodySmall: TextStyle(color: Color(0xFF9D7B1A)),

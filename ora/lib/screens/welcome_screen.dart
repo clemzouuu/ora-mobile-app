@@ -47,21 +47,9 @@ class WelcomePage extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 15),
-                Image.asset(
-                  'assets/images/marble_texture_welcome_screen.jpg',
-                  width: 200,
-                  height: 200,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 30),
-                GlassTextContainer(
-                  child: const Text(
-                    'Appuyez sur le bouton pour commencer',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF9D7B1A)),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+                const SizedBox(height: 300),
+                
+               
                 const SizedBox(height: 40),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
